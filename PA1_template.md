@@ -2,10 +2,13 @@
 ### Global Settings
 
 ```r
-echo = TRUE #Always make code visible 
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='figure/',
+                      echo=TRUE, warning=FALSE, message=FALSE)
 ```
 
 ## Loading and preprocessing the data
+
+Load the dataset and get it ready to be processed.
 
 ```r
 unzip("activity.zip")
@@ -13,6 +16,9 @@ data <- read.csv("activity.csv")
 ```
 
 ## What is mean total number of steps taken per day?
+
+This step calculates the mean and median for total steps taken per day and plots a histogram.
+
 
 ```r
 library(ggplot2)
@@ -25,23 +31,9 @@ qplot(totalSteps,
       col=I("blue"))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-3-1.png) 
+![](figure/unnamed-chunk-3-1.png) 
 
-```r
-mean(totalSteps, na.rm=TRUE)
-```
-
-```
-## [1] 9354.23
-```
-
-```r
-median(totalSteps, na.rm=TRUE)
-```
-
-```
-## [1] 10395
-```
+Here is sample of totalSteps
 
 ```r
 head(totalSteps)
@@ -52,16 +44,36 @@ head(totalSteps)
 ##          0        126      11352      12116      13294      15420
 ```
 
+Mean for total number of steps taken per day:
+
+```r
+mean(totalSteps, na.rm=TRUE)
+```
+
+```
+## [1] 9354.23
+```
+
+Median for total number of steps taken per day:
+
+```r
+median(totalSteps, na.rm=TRUE)
+```
+
+```
+## [1] 10395
+```
+
 
 ## What is the average daily activity pattern?
+
+This time series shows the average daily activity pattern across all days.
 
 ```r
 averages <- aggregate(x=list(steps=data$steps), 
                       by=list(interval=data$interval),
                       FUN=mean, 
                       na.rm=TRUE)
-
-##names(averages)[3] <- "meanOfSteps"
 
 plot(averages$interval, 
      averages$steps, 
@@ -72,32 +84,44 @@ plot(averages$interval,
      lwd=2)
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-4-1.png) 
+![](figure/unnamed-chunk-7-1.png) 
+
+We neeed to find the inverval containing the max number of steps. 
 
 ```r
-averages[which.max(averages$steps),]
+intervalMax <- averages[which.max(averages$steps),]
+intervalMax
 ```
 
 ```
 ##     interval    steps
 ## 104      835 206.1698
 ```
+
+On average across all the days in the dataset, interval ``835`` contains the maximum number of steps ``206.1698113``
+
+
 ## Imputing missing values
+There are many days/intervals where there are missing values (coded as `NA`). The presence of missing days may introduce bias into some calculations or summaries of the data. 
+
+The strategy I am using will populate the  steps column that are NA with the mean for that 5-minute interval.  
+
+Get a count of missing values (NA's)
 
 ```r
-library(xtable)
 missing<-table(sum(is.na(data)))
-print(xtable(table(missing)), type = "html", include.rownames = FALSE)
+missing
 ```
 
 ```
-## <!-- html table generated in R 3.1.3 by xtable 1.7-4 package -->
-## <!-- Sat May 16 11:10:50 2015 -->
-## <table border=1>
-## <tr> <th> missing </th>  </tr>
-##   <tr> <td align="right">   1 </td> </tr>
-##    </table>
+## 
+## 2304 
+##    1
 ```
+
+All of the missing values will be filled in with mean value for that 5-minute
+interval.
+
 
 ```r
 fixedData <- data 
@@ -128,6 +152,9 @@ sum(is.na(fixedData))
 ## [1] 0
 ```
 
+Create a histogram of the total number of steps taken each day and calulate the mean and median for the total number of steps using the fixed data set.  
+
+
 ```r
 totalStepsFixed <- tapply(fixedData$steps, fixedData$date, FUN=sum)
 ##qplot(totalStepsFixed, binwidth=1000, xlab="total number of steps taken each day")
@@ -139,7 +166,10 @@ qplot(totalStepsFixed,
       col=I("blue"))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
+![](figure/unnamed-chunk-11-1.png) 
+
+Calulate the mean and median for both datasets and compare them.  
+
 
 ```r
 mean(totalStepsFixed)
@@ -189,8 +219,14 @@ median(totalStepsFixed) - median(totalSteps)
 ## [1] 371.1887
 ```
 
+The Mean and median values are higher after imputing missing data.  The orignal data contained `steps` with `NA` values and those calcualted as zeros (0) by default.  After imputing the missing values using the mean `steps` of the associated `interval` value, the zeros (0) values are removed.  
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+This code will find the day of the week for each measurement in the fixed dataset.
+
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+
 
 ```r
 fixedData$weekdays <- factor(format(as.Date(fixedData$date), "%A"))
@@ -224,31 +260,20 @@ table(fixedData$weekdays)
 ##   12960    4608
 ```
 
-```r
-print(xtable(table(fixedData$weekdays)), type = "html", include.rownames = FALSE)
-```
+Make a panel plot containing plots of average number of steps taken on weekdays and weekends.
 
-```
-## <!-- html table generated in R 3.1.3 by xtable 1.7-4 package -->
-## <!-- Sat May 16 11:10:51 2015 -->
-## <table border=1>
-## <tr> <th> V1 </th>  </tr>
-##   <tr> <td align="right"> 12960 </td> </tr>
-##   <tr> <td align="right"> 4608 </td> </tr>
-##    </table>
-```
 
 ```r
-averagesFixed <- aggregate(fixedData$steps, 
+averagesFixed <- aggregate(x=list(steps=fixedData$steps), 
                       list(interval = as.numeric(as.character(fixedData$interval)), 
                            weekdays = fixedData$weekdays),
                       FUN = "mean")
-names(averagesFixed)[3] <- "meanOfSteps"
+#names(averagesFixed)[3] <- "meanOfSteps"
 
 library(lattice)
-xyplot(averagesFixed$meanOfSteps ~ averagesFixed$interval | averagesFixed$weekdays, 
+xyplot(averagesFixed$steps ~ averagesFixed$interval | averagesFixed$weekdays, 
        layout = c(1, 2), type = "l", 
        xlab = "5-min Interval", ylab = "Number of steps")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-6-1.png) 
+![](figure/unnamed-chunk-14-1.png) 
